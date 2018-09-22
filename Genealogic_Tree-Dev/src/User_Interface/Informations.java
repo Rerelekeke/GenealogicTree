@@ -159,10 +159,11 @@ public class Informations extends JPanel {
 		    if (name!=null && surname!=null ) {
 				btnCreateNewPerson.setText("Modifier cette personne");
 		    }
+		    
 		    btnCreateNewPerson.addActionListener(new ActionListener() {
 
 		    	public void actionPerformed(ActionEvent arg0) {
-		    		
+		    		String error="";
 		    		if (!TreeFileHandler.CheckifExistingPerson( textFirstName.getText(),textLastName.getText()).equals("error -404") && name==null && surname==null ) 
 		    			{
 		    				
@@ -171,63 +172,47 @@ public class Informations extends JPanel {
 			    					"?",JOptionPane.DEFAULT_OPTION);
 			    			return;
 		    			}
-		    		Tree.main(null);
+//		    		Tree.main();
 		    		
 		    								if (name!=null && surname!=null && LineToModify!=null) {
 		    									btnCreateNewPerson.setText("Modifier cette personne");
 		    									try {
+		    										if(!textFirstName.getText().equals("Prénom") && !textLastName.getText().equals("Nom") && !textFieldQueryFilterPicture.getText().equals("") && resizedImage!= null )
 													TreeFileHandler.BufferedModifyer(LineToModify,System.getProperty("line.separator") + textFirstName.getText() + "," + textLastName.getText() +"," + textFieldMother.getText() +"," + textFieldFather.getText() + "," + textFieldQueryFilterPicture.getText().replaceAll(";;",";"));
-												} catch (IOException e) {
+		    										else error= "error";
+		    									} catch (IOException e) {
 													// TODO Auto-generated catch block
 													e.printStackTrace();
 												}
 		    								}
 		    								else {
 									  			try {
+									  				if(!textFirstName.getText().equals("Prénom") && !textLastName.getText().equals("Nom") && !textFieldQueryFilterPicture.getText().equals("") && resizedImage!= null )
 													TreeFileHandler.BufferedWritter(System.getProperty("line.separator") + textFirstName.getText() + "," + textLastName.getText() +"," + textFieldMother.getText() +"," + textFieldFather.getText() + "," + textFieldQueryFilterPicture.getText().replaceAll(";;",";")  );
+									  				else error= "error";
 												} catch (IOException e1) {
 													// TODO Auto-generated catch block
 													e1.printStackTrace();
 												}
 		    								}
 									  			try {
+									  				if(!textFirstName.getText().equals("Prénom") && !textLastName.getText().equals("Nom") && !textFieldQueryFilterPicture.getText().equals("") && resizedImage!= null )
 									  				ImageIO.write(resizedImage,"png",new File(System.getProperty("user.dir") + "/bin/tree/" + Tree.Title +"/" +textFirstName.getText()+"_"+textLastName.getText()+".png"));
+									  				else error= "error";
 									  			} catch ( Exception e) {
 									  			   e.printStackTrace();
 									  			}
-									  			
+	  				if (error.equals("error")) {
+	  					JOptionPane.showConfirmDialog(null, "Les champs: \n - Prénom \n - Nom \n - Requête \n Ainsi que la photo, doivent être selectionnés" + FileHandler.ErrorList,
+        		    			"Erreur",JOptionPane.DEFAULT_OPTION);	  
+	  				}
+	  				else
+	  				{
 		    		 InfoWindow.setVisible(false);
 		    		 Tree.RectStatus=true;
 		    		 Tree.PaintStatus=true;
-		    		 try {
-		    	    		if (JOptionPane.showConfirmDialog(null, 
-		    	      	            "Etes-vous sûr de vouloir actualiser la liste de photos liées? \n"
-		    	      	            + "Si oui, une fenêtre d'information vous confirmera la bonne fin de l'actualisation", "Demande de confirmation d'actualisation", 
-		    	      	            JOptionPane.YES_NO_OPTION,
-		    	      	            JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION)
-								try {
-									{
-		    	    			FileHandler.ExifContaining("D:\\Images\\Photo", query,surname,name);
-		    	    			JOptionPane.showConfirmDialog(null, "La liste de photos liées est actualisée \n" + FileHandler.ErrorList,
-		        		    			"Fin actualisation photo liée",JOptionPane.DEFAULT_OPTION);	  
-		    					
-		    	      	        }
-								} catch (HeadlessException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-								}
-		    	    		
-							
-//						} catch (ImageProcessingException e) {
-//							// TODO Auto-generated catch block
-////							e.printStackTrace();
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-							
-							JOptionPane.showConfirmDialog(null, "L'actualisation des photos s'est terminée avec des erreurs, veuilez contacter le dévelopeur pour de plus amples informations",
-		    		    			"ERREUR",JOptionPane.DEFAULT_OPTION);	   
-						}
+	  				}
+		    		 
 
 		    	}
 		    });

@@ -18,8 +18,11 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JProgressBar;
+import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import com.drew.imaging.ImageProcessingException;
 
@@ -36,10 +39,17 @@ import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.AdjustmentEvent;
+import java.awt.event.AdjustmentListener;
+
 import javax.swing.Action;
+
+import java.awt.Adjustable;
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.GridBagLayout;
 import java.awt.HeadlessException;
 import java.awt.Image;
 
@@ -50,32 +60,31 @@ public class Tree extends JPanel {
 	public static boolean modificationspainting = false;
 	public static String Title,BackupDirectory;
 	public static boolean state_click = false;
+	public static boolean InitStatus = false;
 	JProgressBar pbar;
 	
 	public static int x,y;
 	
 	public static String TreeString[] = new String[500];
 	public Tree() {
-		  FileHandler.Windows_theme();
-	      TreeWindow.setSize(1024, 768);
-	      TreeWindow.setLocation(0,0);
-	      TreeWindow.getContentPane().setLayout(null);     
-	      TreeWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-	      Debug_class.Debug = false;
-	      Debug_class.Debug();
-	     
-		  TreeWindow.setContentPane(new  Tree());
-		  TreeWindow.setVisible(true);
-		
+
 		MyMouseListener listener = new MyMouseListener();
 	       addMouseListener(listener);
 	       addMouseMotionListener(listener);
-		
+	       
+	       AdjustmentListener listener1 = new MyAdjustmentListener();
+	       pane.getHorizontalScrollBar().addAdjustmentListener(listener1);
+	       pane.getVerticalScrollBar().addAdjustmentListener(listener1);
+	       
+
 		JMenuBar menuBar = new JMenuBar();
 		TreeWindow.setJMenuBar(menuBar);
 		
 		JMenu mnFile = new JMenu("Fichier");
 		menuBar.add(mnFile);
+		
+		JMenu mnDisplay = new JMenu("Affichage");
+		menuBar.add(mnDisplay);
 		
 		
 		JMenuItem mntmAjouterUnePersonne = new JMenuItem("Ajouter une personne");
@@ -98,6 +107,14 @@ public class Tree extends JPanel {
 		mntmModifyPath.setAction(ActionModifyBackupPath); 
 		mnEdit.add(mntmModifyPath);
 		
+		JMenuItem mntmDecreaseWorkSurface = new JMenuItem("Réduire la surface de travail");
+		mntmDecreaseWorkSurface.setAction(DecreaseWorkSurface); 
+		mnDisplay.add(mntmDecreaseWorkSurface);
+		
+		JMenuItem mntmIncreaseWorkSurface = new JMenuItem("Augmenter la surface de travail");
+		mntmIncreaseWorkSurface.setAction(IncreaseWorkSurface); 
+		mnDisplay.add(mntmIncreaseWorkSurface);
+		
 		TreeWindow.addWindowListener(new java.awt.event.WindowAdapter() {
 		    @Override
 		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
@@ -105,55 +122,87 @@ public class Tree extends JPanel {
 		            "Etes-vous sûr de vouloir quitter l'application?", "Fermer la fenetre?", 
 		            JOptionPane.YES_NO_OPTION,
 		            JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION){
-		        	Path sourceDirectory= Paths.get(System.getProperty("user.dir") + "/bin/tree/" + Tree.Title +"/");
-		        	TreeFileHandler.Readtxtfile(false);
-		        	Path targetDirectory = Paths.get(Tree.TreeString[0].split(";")[1].replace("Backup Directory:", "")+Tree.Title);
-		        	
-		    		if (Files.exists(sourceDirectory)){
-		    			try {
-
-		    				  copy(sourceDirectory, targetDirectory);
-//							Files.copy(sourceDirectory, targetDirectory);
-						} catch (IOException e) {
-							// TODO Auto-generated catch block	
-							e.printStackTrace();
-						}
-		    		}
-		        	
-		            System.exit(0);
+		        	if (Tree.Title != null) {
+		        		Path sourceDirectory= Paths.get(System.getProperty("user.dir") + "/bin/tree/" + Tree.Title +"/");
+			        	TreeFileHandler.Readtxtfile(false);
+			        	Path targetDirectory = Paths.get(Tree.TreeString[0].split(";")[1].replace("Backup Directory:", "")+Tree.Title);
+			        	
+			    		if (Files.exists(sourceDirectory)){
+			    			try {
+	
+			    				  copy(sourceDirectory, targetDirectory);
+	//							Files.copy(sourceDirectory, targetDirectory);
+							} catch (IOException e) {
+								// TODO Auto-generated catch block	
+								e.printStackTrace();
+							}
+			    		}
+			        	
+			            System.exit(0);
+		        	}
 		        }
+		        else System.out.println("COMPREND RIEN");
+		        	
+
 		    }
 		});
 		
-		final JScrollPane pane = new JScrollPane();
-	    TreeWindow.add(pane);
+		
 	 
+		
 	   
-//	    JPanel content = new JPanel();
-//		JScrollPane pane = new JScrollPane(content);
-//		pane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
-//		pane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS); 
-		TreeWindow.getContentPane().add(pane);
 		Debug_class.Debug();
 		
 	}
+	
+
 	private static final long serialVersionUID = 1L;
  
-	public static JFrame TreeWindow= new JFrame("Arbre Généalogique");
+	public static JFrame TreeWindow;
 	private final Action actionAddPerson = new SwingActionAddPerson(); 
 	private final Action actionCreateTree = new SwingActionCreateTree(); 
 	private final Action actionOpenTree = new SwingActionOpenTree(); 
 	private final Action ActionModifyBackupPath = new SwingActionModifyBackupPath(); 
+	private final Action DecreaseWorkSurface = new SwingDecreaseWorkSurface(); 
+	private final Action IncreaseWorkSurface = new SwingIncreaseWorkSurface(); 
+	final static JScrollPane pane = new JScrollPane();
+	final static JPanel panel = new JPanel();
+	static Tree canvas=null;
+//	final static JScrollPane pane = new JScrollPane(TreeWindow, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 	
-	  public static void main(String[] args){
+	   static void main(){
+		   TreeWindow = new JFrame("Arbre Généalogique");
+		   
+		   TreeWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		  FileHandler.Windows_theme();
+	      TreeWindow.setSize(1024, 768);
+//	      TreeWindow.setLayout(new BorderLayout());
+		    
+//		    new Tree();
+	      canvas = new Tree();
+//			TreeWindow.setContentPane(panel);
+			
+			pane.setViewportView(canvas);
 
-		  
-		  new Thread(new Runnable() {
-		      public void run() {
-		        Tree.main(args);
-		      }
-		    }).start();
+
+			TreeWindow.add(pane);
+
+		    canvas.setLayout(null);
+    
+		    TreeWindow.setVisible(true);
+		    canvas.setPreferredSize(new Dimension(1024, 768));
+		    pane.revalidate();
+
+//		    SwingUtilities.invokeLater(new Runnable() {
+//		      public void run() {
+//		        
+//		        
+//		      }
+//		    });
+//		  
 	  }
+	   
+
 
 	private class SwingActionAddPerson extends AbstractAction { 
 		public SwingActionAddPerson() {
@@ -198,29 +247,69 @@ public class Tree extends JPanel {
 		}
 	}
 	
-	private class SwingActionModifyBackupPath extends AbstractAction {
-		
-	     
+	private class SwingActionModifyBackupPath extends AbstractAction {     
 		public SwingActionModifyBackupPath() {
 			putValue(NAME, "Modifier le dossier de sauvegarde");
 			putValue(SHORT_DESCRIPTION, "Some short description");
 		}
 		public void actionPerformed(ActionEvent e) {
-			
-//			JOptionPane.showConfirmDialog(null, "Aucun abre généalogique n'est sélectionné. \n Veuillez en ouvrir un ou en créer un via le menu de la page principale.",
-//	    			"Erreur, absence d'arbre genéalogique sélectionné!!",JOptionPane.);	   
-			
 			new ModificationPathBackup();
-			
-//			
-//			boolean Readtxtfile_result = TreeFileHandler.Readtxtfile(true);
-//			if (Readtxtfile_result==false) return;
-//			PaintStatus=false;
-//			RectStatus = false;
-//			repaint();
 		}
 	}
 	
+	private class SwingDecreaseWorkSurface extends AbstractAction {     
+		public SwingDecreaseWorkSurface() {
+			putValue(NAME, "Diminuer la surface de travail");
+			putValue(SHORT_DESCRIPTION, "Some short description");
+		}
+		public void actionPerformed(ActionEvent e) {
+			int Width = (int) (canvas.getWidth()*0.90);
+			int Height = (int) (canvas.getHeight()*0.90);
+			canvas.setPreferredSize(new Dimension(Width, Height));
+			pane.revalidate();
+		}
+	}
+	
+	private class SwingIncreaseWorkSurface extends AbstractAction {     
+		public SwingIncreaseWorkSurface() {
+			putValue(NAME, "Augmenter la surface de travail");
+			putValue(SHORT_DESCRIPTION, "Some short description");
+		}
+		public void actionPerformed(ActionEvent e) {
+			int Width = (int) (canvas.getWidth()*1.10);
+			int Height = (int) (canvas.getHeight()*1.10);
+			canvas.setPreferredSize(new Dimension(Width, Height));
+			pane.revalidate();
+		}
+	}
+	
+	class MyAdjustmentListener implements AdjustmentListener {
+		  public void adjustmentValueChanged(AdjustmentEvent evt) {
+		    Adjustable source = evt.getAdjustable();
+		    if (evt.getValueIsAdjusting()) {
+		      return;
+		    }
+		    int orient = source.getOrientation();
+		    if (orient == Adjustable.HORIZONTAL) {
+		      System.out.println("from horizontal scrollbar"); 
+		    } else {
+		      System.out.println("from vertical scrollbar");
+		    }
+		    int type = evt.getAdjustmentType();
+		    switch (type) {
+		    case AdjustmentEvent.TRACK:
+
+
+		    	if(InitStatus && Title != null) {
+		    		PaintStatus=false;
+		    		repaint();
+		    	}
+
+		      break;
+		    }
+		    int value = evt.getValue();
+		  }
+		}
 	class MyMouseListener extends MouseAdapter {
 	int[] cells;
     BufferedImage bi;
@@ -294,9 +383,10 @@ public class Tree extends JPanel {
 			Image img,img1;
 		    g.setColor(Color.BLACK);
 
-			if (PaintStatus==false) {
+			if (PaintStatus==false && InitStatus ==true) {
 //				if(modificationspainting==false) {
 					super.paintComponent(g);
+					canvas.removeAll();
 //				}
 				
 //			}
@@ -344,7 +434,7 @@ public class Tree extends JPanel {
 							   String query= parts[4];
 							   button.addMouseListener(new MouseAdapter() {
 									   public void mouseClicked(MouseEvent e) {
-
+										   	System.out.println("test");
 										   	if(e.getButton() == MouseEvent.BUTTON1) {
 										   		if( state_click == true) state_click =false;
 										   		else {
@@ -359,11 +449,11 @@ public class Tree extends JPanel {
 									          }
 									   }
 								 });
-							   TreeWindow.add(button);
+							   canvas.add(button);
 							   button.setBounds(width, height, icon.getIconWidth(), icon.getIconHeight());
 								JLabel lbl = new JLabel(parts[0]+ " " + parts[1]);
 								lbl.setBounds(width +20, height + img.getHeight(null)+5, 200, 20);
-							    TreeWindow.getContentPane().add(lbl);
+								canvas.add(lbl);
 
 								if (status_parent == 1 || status_parent == 2) {
 									if (status_parent == 1 ) {
@@ -394,6 +484,7 @@ public class Tree extends JPanel {
 			   drawPerfectRect(g, x-Informations.widthImg/2, y-Informations.heightImg/2, x+Informations.widthImg/2, y+Informations.heightImg/2);
 		   }
 		   PaintStatus = true;
+		   
 		}
 	   public  void drawPerfectRect(Graphics g, int x, int y, int x2, int y2) {
 	       int px = Math.min(x,x2);
@@ -479,4 +570,5 @@ class PopUpDemo extends JPopupMenu {
     
 
 }
+
 
